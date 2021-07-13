@@ -281,6 +281,15 @@ static const char * const pllout_monitor_sels[] = {"osc_25m", "osc_27m", "dummy"
 						   "sys_pll3_out_monitor", "dram_pll_out_monitor",
 						   "video_pll2_out_monitor", };
 
+static const char * const imx8mq_clk2_sels[] = {
+	"osc_25m", "osc_27m", "dummy", "dummy",
+	"dummy", "dummy", "dummy", "dummy",
+	"dummy", "dummy", "dummy", "clk2_sys1_pll_out_div",
+	"clk2_sys2_pll_out_div", "clk2_sys3_pll_out_div", "clk2_dram_pll_out_div", "clk2_video2_pll_out_div",
+};
+
+static struct clk_onecell_data clk_data;
+
 static struct clk_hw_onecell_data *clk_hw_data;
 static struct clk_hw **hws;
 
@@ -312,12 +321,68 @@ static int imx_clk_init_on(struct device_node *np,
 	return 0;
 }
 
+struct init_clk {
+	unsigned clk;
+	unsigned parent;
+	unsigned rate;
+};
+
+static struct init_clk setup_clks[] = {
+	{IMX8MQ_CLK_AHB, IMX8MQ_SYS1_PLL_133M},
+	{IMX8MQ_CLK_NAND_USDHC_BUS, IMX8MQ_SYS1_PLL_266M},
+	{IMX8MQ_CLK_AUDIO_AHB, IMX8MQ_SYS2_PLL_500M},
+	/* config video_pll1 clock */
+	{IMX8MQ_VIDEO_PLL1_REF_SEL, IMX8MQ_CLK_27M},
+	{IMX8MQ_VIDEO_PLL1, 0, 593999999},
+	/* set pcie root's parent clk source */
+	{IMX8MQ_CLK_PCIE1_CTRL, IMX8MQ_SYS2_PLL_250M},
+	{IMX8MQ_CLK_PCIE1_PHY, IMX8MQ_SYS2_PLL_100M},
+	{IMX8MQ_CLK_PCIE2_CTRL, IMX8MQ_SYS2_PLL_250M},
+	{IMX8MQ_CLK_PCIE2_PHY, IMX8MQ_SYS2_PLL_100M},
+	{IMX8MQ_CLK_CSI1_CORE, IMX8MQ_SYS1_PLL_266M},
+	{IMX8MQ_CLK_CSI1_PHY_REF, IMX8MQ_SYS2_PLL_1000M},
+	{IMX8MQ_CLK_CSI1_ESC, IMX8MQ_SYS1_PLL_800M},
+	{IMX8MQ_CLK_CSI2_CORE, IMX8MQ_SYS1_PLL_266M},
+	{IMX8MQ_CLK_CSI2_PHY_REF, IMX8MQ_SYS2_PLL_1000M},
+	{IMX8MQ_CLK_CSI2_ESC, IMX8MQ_SYS1_PLL_800M},
+	{IMX8MQ_CLK_CLK2_SYS1_PLL_OUT_DIV, 0, 100000000},
+	{IMX8MQ_CLK_CLK2, IMX8MQ_CLK_CLK2_SYS1_PLL_OUT_DIV},
+};
+
+static void check_assigned_clocks(void)
+{
+	struct device_node *np;
+	struct of_phandle_args clkspec;
+	int i, index, rc, num_clks;
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx8mq-ccm");
+	num_clks = of_count_phandle_with_args(np, "assigned-clocks",
+					 "#clock-cells");
+	for (index = 0; index < num_clks; index++) {
+		rc = of_parse_phandle_with_args(np, "assigned-clocks",
+			"#clock-cells", index, &clkspec);
+		if (rc < 0)
+			continue;
+		if (clkspec.np == np) {
+			int clk_num = clkspec.args[0];
+
+			for (i = 0; i < ARRAY_SIZE(setup_clks); i++) {
+				if (setup_clks[i].clk == clk_num) {
+					pr_info("%s: skipping %d\n", __func__, setup_clks[i].clk);
+					setup_clks[i].clk = 0;
+					break;
+				}
+			}
+		}
+	}
+}
+
 static int imx8mq_clocks_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
 	void __iomem *base;
-	int err;
+	int err, i;
 
 	check_m4_enabled();
 
@@ -433,6 +498,15 @@ static int imx8mq_clocks_probe(struct platform_device *pdev)
 	hws[IMX8MQ_CLK_MON_VIDEO_PLL2_DIV] = imx_clk_hw_divider("video_pll2_out_monitor", "video2_pll_out", base + 0x7c, 16, 3);
 	hws[IMX8MQ_CLK_MON_SEL] = imx_clk_hw_mux("pllout_monitor_sel", base + 0x74, 0, 4, pllout_monitor_sels, ARRAY_SIZE(pllout_monitor_sels));
 	hws[IMX8MQ_CLK_MON_CLK2_OUT] = imx_clk_hw_gate("pllout_monitor_clk2", "pllout_monitor_sel", base + 0x74, 4);
+
+	/* differential output clock */
+	clks[IMX8MQ_CLK_CLK2_SYS1_PLL_OUT_DIV]	= imx_clk_divider("clk2_sys1_pll_out_div", "sys1_pll_out", base + 0x7c, 0, 3);
+	clks[IMX8MQ_CLK_CLK2_SYS2_PLL_OUT_DIV]	= imx_clk_divider("clk2_sys2_pll_out_div", "sys2_pll_out", base + 0x7c, 4, 3);
+	clks[IMX8MQ_CLK_CLK2_SYS3_PLL_OUT_DIV]	= imx_clk_divider("clk2_sys3_pll_out_div", "sys3_pll_out", base + 0x7C, 8, 3);
+	clks[IMX8MQ_CLK_CLK2_DRAM_PLL_OUT_DIV]	= imx_clk_divider("clk2_dram_pll_out_div", "dram_pll_out", base + 0x7c, 12, 3);
+	clks[IMX8MQ_CLK_CLK2_VIDEO2_PLL_OUT_DIV] = imx_clk_divider("clk2_video2_pll_out_div", "video2_pll_out", base + 0x7c, 16, 3);
+	clks[IMX8MQ_CLK_CLK2] = imx_clk_mux("clk2", base + 0x74, 0, 4, imx8mq_clk2_sels, ARRAY_SIZE(imx8mq_clk2_sels));
+	clks[IMX8MQ_CLK_CLK2_CG] = imx_clk_gate("clk2_cg", "clk2", base + 0x74, 4);
 
 	np = dev->of_node;
 	base = devm_platform_ioremap_resource(pdev, 0);
@@ -653,6 +727,18 @@ static int imx8mq_clocks_probe(struct platform_device *pdev)
 	clk_set_parent(hws[IMX8MQ_CLK_CSI2_PHY_REF]->clk, hws[IMX8MQ_SYS2_PLL_1000M]->clk);
 	clk_set_parent(hws[IMX8MQ_CLK_CSI2_ESC]->clk, hws[IMX8MQ_SYS1_PLL_800M]->clk);
 
+	check_assigned_clocks();
+
+	for (i = 0; i < ARRAY_SIZE(setup_clks); i++) {
+		if (setup_clks[i].clk) {
+			if (setup_clks[i].parent)
+				clk_set_parent(clks[setup_clks[i].clk], clks[setup_clks[i].parent]);
+			if (setup_clks[i].rate)
+				clk_set_rate(clks[setup_clks[i].clk], setup_clks[i].rate);
+
+		}
+	}
+
 	imx_register_uart_clocks(4);
 
 	return 0;
@@ -682,6 +768,7 @@ static struct platform_driver imx8mq_clk_driver = {
 		.of_match_table = imx8mq_clk_of_match,
 	},
 };
+
 module_platform_driver(imx8mq_clk_driver);
 module_param(mcore_booted, bool, S_IRUGO);
 MODULE_PARM_DESC(mcore_booted, "See Cortex-M core is booted or not");
