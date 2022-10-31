@@ -500,13 +500,13 @@ static int imx8mq_clocks_probe(struct platform_device *pdev)
 	hws[IMX8MQ_CLK_MON_CLK2_OUT] = imx_clk_hw_gate("pllout_monitor_clk2", "pllout_monitor_sel", base + 0x74, 4);
 
 	/* differential output clock */
-	clks[IMX8MQ_CLK_CLK2_SYS1_PLL_OUT_DIV]	= imx_clk_divider("clk2_sys1_pll_out_div", "sys1_pll_out", base + 0x7c, 0, 3);
-	clks[IMX8MQ_CLK_CLK2_SYS2_PLL_OUT_DIV]	= imx_clk_divider("clk2_sys2_pll_out_div", "sys2_pll_out", base + 0x7c, 4, 3);
-	clks[IMX8MQ_CLK_CLK2_SYS3_PLL_OUT_DIV]	= imx_clk_divider("clk2_sys3_pll_out_div", "sys3_pll_out", base + 0x7C, 8, 3);
-	clks[IMX8MQ_CLK_CLK2_DRAM_PLL_OUT_DIV]	= imx_clk_divider("clk2_dram_pll_out_div", "dram_pll_out", base + 0x7c, 12, 3);
-	clks[IMX8MQ_CLK_CLK2_VIDEO2_PLL_OUT_DIV] = imx_clk_divider("clk2_video2_pll_out_div", "video2_pll_out", base + 0x7c, 16, 3);
-	clks[IMX8MQ_CLK_CLK2] = imx_clk_mux("clk2", base + 0x74, 0, 4, imx8mq_clk2_sels, ARRAY_SIZE(imx8mq_clk2_sels));
-	clks[IMX8MQ_CLK_CLK2_CG] = imx_clk_gate("clk2_cg", "clk2", base + 0x74, 4);
+	// hws[IMX8MQ_CLK_CLK2_SYS1_PLL_OUT_DIV]	= imx_clk_hw_divider("clk2_sys1_pll_out_div", "sys1_pll_out", base + 0x7c, 0, 3);
+	// hws[IMX8MQ_CLK_CLK2_SYS2_PLL_OUT_DIV]	= imx_clk_hw_divider("clk2_sys2_pll_out_div", "sys2_pll_out", base + 0x7c, 4, 3);
+	// hws[IMX8MQ_CLK_CLK2_SYS3_PLL_OUT_DIV]	= imx_clk_hw_divider("clk2_sys3_pll_out_div", "sys3_pll_out", base + 0x7C, 8, 3);
+	// hws[IMX8MQ_CLK_CLK2_DRAM_PLL_OUT_DIV]	= imx_clk_hw_divider("clk2_dram_pll_out_div", "dram_pll_out", base + 0x7c, 12, 3);
+	// hws[IMX8MQ_CLK_CLK2_VIDEO2_PLL_OUT_DIV] = imx_clk_hw_divider("clk2_video2_pll_out_div", "video2_pll_out", base + 0x7c, 16, 3);
+	// hws[IMX8MQ_CLK_CLK2] = imx_clk_mux("clk2", base + 0x74, 0, 4, imx8mq_clk2_sels, ARRAY_SIZE(imx8mq_clk2_sels));
+	// hws[IMX8MQ_CLK_CLK2_CG] = imx_clk_gate("clk2_cg", "clk2", base + 0x74, 4);
 
 	np = dev->of_node;
 	base = devm_platform_ioremap_resource(pdev, 0);
@@ -732,9 +732,9 @@ static int imx8mq_clocks_probe(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(setup_clks); i++) {
 		if (setup_clks[i].clk) {
 			if (setup_clks[i].parent)
-				clk_set_parent(clks[setup_clks[i].clk], clks[setup_clks[i].parent]);
+				clk_set_parent(hws[setup_clks[i].clk]->clk, hws[setup_clks[i].parent]->clk);
 			if (setup_clks[i].rate)
-				clk_set_rate(clks[setup_clks[i].clk], setup_clks[i].rate);
+				clk_set_rate(hws[setup_clks[i].clk]->clk, setup_clks[i].rate);
 
 		}
 	}
