@@ -17,6 +17,7 @@ subdir-y += freescale
 subdir-y += hisilicon
 subdir-y += intel
 subdir-y += lg
+subdir-y += luci
 subdir-y += marvell
 subdir-y += mediatek
 subdir-y += microchip
