@@ -10,7 +10,6 @@
 #include <linux/of_graph.h>
 #include <linux/slab.h>
 
-#include <drm/drmP.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_edid.h>
@@ -58,7 +57,7 @@ static int sn65dsi83_connector_get_modes(struct drm_connector *connector)
     dev_info(dev, "%s\n",__func__);
     mode = drm_mode_create(connector->dev);
     if (!mode) {
-        DRM_DEV_ERROR(dev, "Failed to create display mode!\n");
+        dev_err(dev, "Failed to create display mode!\n");
         return 0;
     }
 
@@ -78,9 +77,9 @@ static int sn65dsi83_connector_get_modes(struct drm_connector *connector)
     if (brg->vm.flags & DISPLAY_FLAGS_DE_LOW)
         *bus_flags |= DRM_BUS_FLAG_DE_LOW;
     if (brg->vm.flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
-        *bus_flags |= DRM_BUS_FLAG_PIXDATA_NEGEDGE;
+        *bus_flags |= DRM_BUS_FLAG_PIXDATA_DRIVE_NEGEDGE;
     if (brg->vm.flags & DISPLAY_FLAGS_PIXDATA_POSEDGE)
-        *bus_flags |= DRM_BUS_FLAG_PIXDATA_POSEDGE;
+        *bus_flags |= DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE;
 
     ret = drm_display_info_set_bus_formats(&connector->display_info,
                            &bus_format, 1);
@@ -167,14 +166,15 @@ static void sn65dsi83_bridge_mode_set(struct drm_bridge *bridge,
     drm_mode_copy(&sn65dsi83->curr_mode, adj_mode);
 }
 
-static int sn65dsi83_bridge_attach(struct drm_bridge *bridge)
+static int sn65dsi83_bridge_attach(struct drm_bridge *bridge,
+			       enum drm_bridge_attach_flags flags)
 {
     struct sn65dsi83 *sn65dsi83 = bridge_to_sn65dsi83(bridge);
     int ret;
 
     dev_info(DRM_DEVICE(bridge),"%s\n",__func__);
     if (!bridge->encoder) {
-        DRM_ERROR("Parent encoder object not found");
+        dev_err(DRM_DEVICE(bridge),"Parent encoder object not found");
         return -ENODEV;
     }
 
@@ -184,7 +184,7 @@ static int sn65dsi83_bridge_attach(struct drm_bridge *bridge)
                  &sn65dsi83_connector_funcs,
                  DRM_MODE_CONNECTOR_DSI);
     if (ret) {
-        DRM_ERROR("Failed to initialize connector with drm\n");
+        dev_err(DRM_DEVICE(bridge),"Failed to initialize connector with drm\n");
         return ret;
     }
     drm_connector_helper_add(&sn65dsi83->connector,

@@ -20,8 +20,8 @@
 #include <linux/of_device.h>
 #include <linux/of_graph.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
-#include <drm/drmP.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_edid.h>
