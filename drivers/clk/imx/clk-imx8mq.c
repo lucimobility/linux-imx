@@ -729,16 +729,6 @@ static int imx8mq_clocks_probe(struct platform_device *pdev)
 
 	check_assigned_clocks();
 
-	for (i = 0; i < ARRAY_SIZE(setup_clks); i++) {
-		if (setup_clks[i].clk) {
-			if (setup_clks[i].parent)
-				clk_set_parent(hws[setup_clks[i].clk]->clk, hws[setup_clks[i].parent]->clk);
-			if (setup_clks[i].rate)
-				clk_set_rate(hws[setup_clks[i].clk]->clk, setup_clks[i].rate);
-
-		}
-	}
-
 	imx_register_uart_clocks(4);
 
 	return 0;
