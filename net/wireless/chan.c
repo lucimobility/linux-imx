@@ -199,10 +199,16 @@ bool cfg80211_chandef_valid(const struct cfg80211_chan_def *chandef)
 	int oper_width, control_width;
 
 	if (!chandef->chan)
+	{
+		printk(KERN_ERR "No channel on chandef");
 		return false;
+	}
 
 	if (chandef->freq1_offset >= 1000)
+	{
+		printk(KERN_ERR "Freq1 offset %d is over 1000", chandef->freq1_offset);
 		return false;
+	}
 
 	control_freq = chandef->chan->center_freq;
 
@@ -213,9 +219,15 @@ bool cfg80211_chandef_valid(const struct cfg80211_chan_def *chandef)
 	case NL80211_CHAN_WIDTH_20_NOHT:
 		if (ieee80211_chandef_to_khz(chandef) !=
 		    ieee80211_channel_to_khz(chandef->chan))
-			return false;
+			{
+				printk(KERN_ERR "Chandef freq does not equal channel freq");
+				return false;
+			}
 		if (chandef->center_freq2)
-			return false;
+			{
+				printk(KERN_ERR "Chandef has a center freq2 #1");
+				return false;
+			}
 		break;
 	case NL80211_CHAN_WIDTH_1:
 	case NL80211_CHAN_WIDTH_2:
@@ -223,7 +235,10 @@ bool cfg80211_chandef_valid(const struct cfg80211_chan_def *chandef)
 	case NL80211_CHAN_WIDTH_8:
 	case NL80211_CHAN_WIDTH_16:
 		if (chandef->chan->band != NL80211_BAND_S1GHZ)
-			return false;
+			{
+				printk(KERN_ERR "Channel band %d does not equal NL80211_BAND_S1GHZ", chandef->chan->band);
+				return false;
+			}
 
 		control_freq = ieee80211_channel_to_khz(chandef->chan);
 		oper_freq = ieee80211_chandef_to_khz(chandef);
@@ -233,46 +248,79 @@ bool cfg80211_chandef_valid(const struct cfg80211_chan_def *chandef)
 		oper_width = cfg80211_chandef_get_width(chandef);
 
 		if (oper_width < 0 || control_width < 0)
+		{
+			printk(KERN_ERR "Oper Width %d or control width %d is less than 0", oper_width, control_width);
 			return false;
+		}
 		if (chandef->center_freq2)
+		{
+			printk(KERN_ERR "Chandef has a center freq2 #2");
 			return false;
+		}
 
 		if (control_freq + MHZ_TO_KHZ(control_width) / 2 >
 		    oper_freq + MHZ_TO_KHZ(oper_width) / 2)
-			return false;
+			{
+				printk(KERN_ERR "Control freq, oper_freq are invalid 1");
+				return false;
+			}
 
 		if (control_freq - MHZ_TO_KHZ(control_width) / 2 <
 		    oper_freq - MHZ_TO_KHZ(oper_width) / 2)
-			return false;
+			{
+				printk(KERN_ERR "Control freq, oper_freq are invalid 2");
+				return false;
+			}
 		break;
 	case NL80211_CHAN_WIDTH_40:
 		if (chandef->center_freq1 != control_freq + 10 &&
 		    chandef->center_freq1 != control_freq - 10)
-			return false;
+			{
+				printk(KERN_ERR "Chan width 40; center freq 1: %d, control_freq: %d", chandef->center_freq1, control_freq);
+				return false;
+			}
 		if (chandef->center_freq2)
+		{
+			printk(KERN_ERR "Chandef has a center freq2 #3");
 			return false;
+		}
 		break;
 	case NL80211_CHAN_WIDTH_80P80:
 		if (chandef->center_freq1 != control_freq + 30 &&
 		    chandef->center_freq1 != control_freq + 10 &&
 		    chandef->center_freq1 != control_freq - 10 &&
 		    chandef->center_freq1 != control_freq - 30)
-			return false;
+			{
+				printk(KERN_ERR "80P80 center freq 1 is wrong");
+				return false;
+			}
 		if (!chandef->center_freq2)
+		{
+			printk(KERN_ERR "Chandef doesn't have a center freq2 #1");
 			return false;
+		}
 		/* adjacent is not allowed -- that's a 160 MHz channel */
 		if (chandef->center_freq1 - chandef->center_freq2 == 80 ||
 		    chandef->center_freq2 - chandef->center_freq1 == 80)
-			return false;
+			{
+				printk(KERN_ERR "Adjacent frequencies or something");
+				return false;
+			}
 		break;
 	case NL80211_CHAN_WIDTH_80:
 		if (chandef->center_freq1 != control_freq + 30 &&
 		    chandef->center_freq1 != control_freq + 10 &&
 		    chandef->center_freq1 != control_freq - 10 &&
 		    chandef->center_freq1 != control_freq - 30)
-			return false;
+			{
+				printk(KERN_ERR "Chan width 80 thing");
+				return false;
+			}
 		if (chandef->center_freq2)
-			return false;
+			{
+				printk(KERN_ERR "Chandef has a center freq2 #4");
+				return false;
+			}
 		break;
 	case NL80211_CHAN_WIDTH_160:
 		if (chandef->center_freq1 != control_freq + 70 &&
@@ -283,22 +331,37 @@ bool cfg80211_chandef_valid(const struct cfg80211_chan_def *chandef)
 		    chandef->center_freq1 != control_freq - 30 &&
 		    chandef->center_freq1 != control_freq - 50 &&
 		    chandef->center_freq1 != control_freq - 70)
-			return false;
+			{
+				printk(KERN_ERR "Width 160 which would be crazy");
+				return false;
+			}
 		if (chandef->center_freq2)
-			return false;
+			{
+				printk(KERN_ERR "Chandef has a center freq2 #5");
+				return false;
+			}
 		break;
 	default:
-		return false;
+		{
+			printk(KERN_ERR "The default... Huh");
+			return false;
+		}
 	}
 
 	/* channel 14 is only for IEEE 802.11b */
 	if (chandef->center_freq1 == 2484 &&
 	    chandef->width != NL80211_CHAN_WIDTH_20_NOHT)
-		return false;
+		{
+			printk(KERN_ERR "What are we doing here");
+			return false;
+		}
 
 	if (cfg80211_chandef_is_edmg(chandef) &&
 	    !cfg80211_edmg_chandef_valid(chandef))
-		return false;
+		{
+			printk(KERN_ERR "Something else has said this is bad");
+			return false;
+		}
 
 	return true;
 }
