@@ -394,16 +394,7 @@
 	clock-frequency = <400000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_i2c1>;
-	status = "okay";
-
-	imu@6a {
-		compatible = "st,lsm6dsl";
-		reg = <0x6a>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <5 IRQ_TYPE_EDGE_RISING>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_lsm6dsl>;
-	};
+	status = "disabled";
 };
 
 &i2c2 {
