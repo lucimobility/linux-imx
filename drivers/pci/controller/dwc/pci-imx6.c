@@ -127,6 +127,7 @@ struct imx6_pcie {
 	struct clk		*phy_per;
 	struct clk		*misc_per;
 	struct regmap		*iomuxc_gpr;
+	struct regmap   *ccm_base;
 	u32			controller_id;
 	struct reset_control	*pciephy_reset;
 	struct reset_control	*pciephy_perst;
@@ -1000,6 +1001,8 @@ static void imx6_pcie_assert_core_reset(struct imx6_pcie *imx6_pcie)
 	int i;
 	struct device *dev = imx6_pcie->pci->dev;
 
+	dev_info(dev, "asserting core reset\n");
+
 	switch (imx6_pcie->drvdata->variant) {
 	case IMX7D:
 	case IMX7D_EP:
@@ -1154,6 +1157,8 @@ static void imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 	int ret, i;
 	u32 val, tmp;
 
+	dev_info(dev, "PCIE: deassert core reset\n");
+
 	if (imx6_pcie->vpcie && !regulator_is_enabled(imx6_pcie->vpcie)) {
 		ret = regulator_enable(imx6_pcie->vpcie);
 		if (ret) {
@@ -1179,6 +1184,7 @@ static void imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 
 	/* Some boards don't have PCIe reset GPIO. */
 	if (gpio_is_valid(imx6_pcie->reset_gpio)) {
+		dev_info(imx6_pcie->pci->dev, "PCIE: Setting gpio in deassert core reset\n");
 		gpio_set_value_cansleep(imx6_pcie->reset_gpio,
 					imx6_pcie->gpio_active_high);
 		msleep(20);
@@ -1403,6 +1409,8 @@ static void imx6_pcie_init_phy(struct imx6_pcie *imx6_pcie)
 	int i;
 	unsigned int offset, val;
 
+	dev_info(imx6_pcie->pci->dev, "PCIE: Init PHY\n");
+
 	switch (imx6_pcie->drvdata->variant) {
 	case IMX8QXP:
 	case IMX8QXP_EP:
@@ -1572,11 +1580,12 @@ static void imx6_pcie_init_phy(struct imx6_pcie *imx6_pcie)
 		/*
 		 * TODO: Currently this code assumes external
 		 * oscillator is being used
+		 * // Changed to internal
 		 */
 		regmap_update_bits(imx6_pcie->iomuxc_gpr,
 				   imx6_pcie_grp_offset(imx6_pcie),
 				   IMX8MQ_GPR_PCIE_REF_USE_PAD,
-				   IMX8MQ_GPR_PCIE_REF_USE_PAD);
+				   0);
 		/*
 		 * Regarding the datasheet, the PCIE_VPH is suggested
 		 * to be 1.8V. If the PCIE_VPH is supplied by 3.3V, the
@@ -1792,6 +1801,8 @@ static int imx6_pcie_start_link(struct dw_pcie *pci)
 	u8 offset = dw_pcie_find_capability(pci, PCI_CAP_ID_EXP);
 	u32 tmp;
 	int ret;
+
+	dev_info(dev, "PCIE Start link started\n");
 
 	if (dw_pcie_link_up(pci)) {
 		dev_dbg(dev, "link is already up\n");
@@ -2335,6 +2346,8 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 	struct regmap_config regconfig = imx6_pcie_regconfig;
 	int ret;
 
+	dev_info(dev, "i.MX PCIe driver\n");
+
 	imx6_pcie = devm_kzalloc(dev, sizeof(*imx6_pcie), GFP_KERNEL);
 	if (!imx6_pcie)
 		return -ENOMEM;
@@ -2418,7 +2431,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 	imx6_pcie->dis_gpio = of_get_named_gpio(node, "disable-gpio", 0);
 	if (gpio_is_valid(imx6_pcie->dis_gpio)) {
 		ret = devm_gpio_request_one(&pdev->dev, imx6_pcie->dis_gpio,
-					    GPIOF_OUT_INIT_LOW, "PCIe DIS");
+					    GPIOF_OUT_INIT_HIGH, "PCIe DIS");
 		if (ret) {
 			dev_err(&pdev->dev, "unable to get disable gpio\n");
 			return ret;
@@ -2426,6 +2439,24 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 	} else if (imx6_pcie->dis_gpio == -EPROBE_DEFER) {
 		return imx6_pcie->dis_gpio;
 	}
+
+	int disable_gpio_2 = of_get_named_gpio(node, "disable-gpio-2", 0);
+	if (gpio_is_valid(disable_gpio_2)) {
+		devm_gpio_request_one(&pdev->dev, disable_gpio_2,
+				      GPIOF_OUT_INIT_LOW, "PCIe DIS 2");
+		
+		gpio_set_value_cansleep(disable_gpio_2, 1);
+	}
+
+	int disable_gpio_3 = of_get_named_gpio(node, "disable-gpio-3", 0);
+	if (gpio_is_valid(disable_gpio_3)) {
+		devm_gpio_request_one(&pdev->dev, disable_gpio_3,
+				      GPIOF_OUT_INIT_LOW, "PCIe DIS 3");
+		
+		gpio_set_value_cansleep(disable_gpio_3, 1);
+	}
+
+
 	imx6_pcie->epdev_on = devm_regulator_get(&pdev->dev, "epdev_on");
 	if (IS_ERR(imx6_pcie->epdev_on))
 		return -EPROBE_DEFER;
@@ -2438,11 +2469,13 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 					GPIOF_OUT_INIT_HIGH :
 					GPIOF_OUT_INIT_LOW,
 				"PCIe reset");
+		dev_info(dev, "PCIE: Got reset GPIO %d, Active High: %d\n", imx6_pcie->reset_gpio, imx6_pcie->gpio_active_high);
 		if (ret) {
 			dev_err(dev, "unable to get reset gpio\n");
 			return ret;
 		}
 	} else if (imx6_pcie->reset_gpio == -EPROBE_DEFER) {
+		dev_warn(dev, "reset gpio not available\n");
 		return imx6_pcie->reset_gpio;
 	}
 
@@ -2488,6 +2521,14 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		if (IS_ERR(imx6_pcie->pcie_aux))
 			return dev_err_probe(dev, PTR_ERR(imx6_pcie->pcie_aux),
 					     "pcie_aux clock source missing or invalid\n");
+
+		if (!imx6_pcie->ext_osc) {
+			imx6_pcie->ccm_base = syscon_regmap_lookup_by_compatible(
+					"fsl,imx8mq-anatop");
+			regmap_update_bits(imx6_pcie->ccm_base, 0x74, 0xFFFFFFFF, 0x1B);
+			regmap_update_bits(imx6_pcie->ccm_base, 0x7C, 0xFFFFFFFF, 0x77777);
+		}
+
 		fallthrough;
 	case IMX7D:
 	case IMX7D_EP:
