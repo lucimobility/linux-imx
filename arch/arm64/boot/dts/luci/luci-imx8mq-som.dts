@@ -246,10 +246,10 @@
 
 		pinctrl_ecspi3: ecspi3grp {
 			fsl,pins = <
-				MX8MQ_IOMUXC_UART1_RXD_ECSPI3_SCLK	0x82
+				/* MX8MQ_IOMUXC_UART1_RXD_ECSPI3_SCLK	0x82
 				MX8MQ_IOMUXC_UART1_TXD_ECSPI3_MOSI	0x82
 				MX8MQ_IOMUXC_UART2_RXD_ECSPI3_MISO 	0x82
-				MX8MQ_IOMUXC_UART2_TXD_GPIO5_IO25	0x82
+				MX8MQ_IOMUXC_UART2_TXD_GPIO5_IO25	0x82 */
 			>;
 		};
 
@@ -264,10 +264,10 @@
         // Sierra Wireless HL7800 / Bluetooth on Jody Module
 		pinctrl_uart2: uart2grp {
 			fsl,pins = <
-				MX8MQ_IOMUXC_UART2_RXD_UART2_DCE_RX		0x79
-				MX8MQ_IOMUXC_UART2_TXD_UART2_DCE_TX		0x79
-				MX8MQ_IOMUXC_UART4_RXD_UART2_DCE_CTS_B	0x79
-				MX8MQ_IOMUXC_UART4_TXD_UART2_DCE_RTS_B	0x79
+				MX8MQ_IOMUXC_UART2_RXD_UART2_DCE_RX		0x49 /* SOM Pin 63 */
+				MX8MQ_IOMUXC_UART2_TXD_UART2_DCE_TX		0x49 /* SOM Pin 58 */
+				MX8MQ_IOMUXC_UART4_RXD_UART2_DCE_CTS_B	0x49 /* SOM Pin 5 */
+				MX8MQ_IOMUXC_UART4_TXD_UART2_DCE_RTS_B	0x49 /* SOM Pin 3 */
 			>;
 		};
 
@@ -399,9 +399,9 @@
 		pinctrl_sai5: sai5grp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_SAI1_TXFS_SAI5_TX_SYNC 	0xd6
-				MX8MQ_IOMUXC_SAI1_TXC_SAI5_TX_BCLK	0xd6
-				MX8MQ_IOMUXC_SAI1_TXD0_SAI5_TX_DATA0 0xd6
-				MX8MQ_IOMUXC_SAI1_RXD0_SAI5_RX_DATA0 0xd6
+				MX8MQ_IOMUXC_SAI1_TXC_SAI5_TX_BCLK		0xd6
+				MX8MQ_IOMUXC_SAI1_TXD0_SAI5_TX_DATA0 	0xd6
+				MX8MQ_IOMUXC_SAI1_RXD0_SAI5_RX_DATA0 	0xd6
 			>;
 		};
     };
@@ -578,21 +578,16 @@
     status = "okay";
 };
 
-&uart1 { /* GNSS */
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_uart1>;
-    assigned-clocks = <&clk IMX8MQ_CLK_UART1>;
-    assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
-    status = "okay";
+&uart1 {
+    status = "disabled";
 };
 
 &uart2 { /* Sierra Wireless HL7800 */
     pinctrl-names = "default";
     pinctrl-0 = <&pinctrl_uart2>;
     assigned-clocks = <&clk IMX8MQ_CLK_UART2>;
-    assigned-clock-parents = <&clk IMX8MQ_CLK_25M>;
+    assigned-clock-parents = <&clk IMX8MQ_SYS2_PLL_100M>;
     fsl,uart-has-rtscts;
-    fsl,dte-mode;
     status = "okay";
 };
 
