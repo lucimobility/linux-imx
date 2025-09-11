@@ -652,3 +652,9 @@
 &snvs_rtc {
 	status = "disabled";
 };
+
+&{/busfreq} {
+	// Disable busfreq since the driver keeps changing the memory frequency which is causing 
+	// performance issues for LUCI.
+	status = "disabled";
+};
