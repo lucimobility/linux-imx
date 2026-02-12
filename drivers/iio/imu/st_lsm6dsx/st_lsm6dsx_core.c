@@ -2272,10 +2272,14 @@ static int st_lsm6dsx_reset_device(struct st_lsm6dsx_hw *hw)
 	 * possible races on interrupt line 1. If the first interrupt
 	 * line is asserted during hw reset the device will work in
 	 * I3C-only mode (if it is supported)
+	 *
+	 * Skip flush during probe when FIFO is not yet enabled
 	 */
-	err = st_lsm6dsx_flush_fifo(hw);
-	if (err < 0 && err != -ENOTSUPP)
-		return err;
+	if (hw->fifo_mask) {
+		err = st_lsm6dsx_flush_fifo(hw);
+		if (err < 0 && err != -ENOTSUPP)
+			return err;
+	}
 
 	/* device sw reset */
 	reg = &hw->settings->reset;
@@ -2284,7 +2288,8 @@ static int st_lsm6dsx_reset_device(struct st_lsm6dsx_hw *hw)
 	if (err < 0)
 		return err;
 
-	msleep(50);
+	/* AN5040: SW reset completes in 50µs, use 500-1000us for safety margin */
+	usleep_range(500, 1000);
 
 	/* reload trimming parameter */
 	reg = &hw->settings->boot;
@@ -2293,7 +2298,8 @@ static int st_lsm6dsx_reset_device(struct st_lsm6dsx_hw *hw)
 	if (err < 0)
 		return err;
 
-	msleep(50);
+	/* AN5040: Boot procedure completes in 15ms, use ~18ms for safety margin */
+	usleep_range(18000, 20000);
 
 	return 0;
 }
@@ -2620,7 +2626,8 @@ static int st_lsm6dsx_init_regulators(struct device *dev)
 	if (err)
 		return dev_err_probe(dev, err, "failed to enable regulators\n");
 
-	msleep(50);
+	// LUCI does not have separate regulators for this. No need to sleep
+	// msleep(50);
 
 	return 0;
 }
