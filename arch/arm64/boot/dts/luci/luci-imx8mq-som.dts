@@ -399,6 +399,7 @@
 	imu@6a {
 		compatible = "st,lsm6dsl";
 		reg = <0x6a>;
+		st,disable-sensor-hub;  /* Disable magnetometer probing - IMU only */
 		interrupt-parent = <&gpio3>;
 		interrupts = <5 IRQ_TYPE_EDGE_RISING>;
 		pinctrl-names = "default";
